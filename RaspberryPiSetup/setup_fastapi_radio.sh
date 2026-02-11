@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 sudo apt update -y
@@ -7,6 +7,7 @@ sudo apt install -y build-essential libtool libusb-1.0-0-dev libncurses5-dev
 sudo apt install -y git build-essential autoconf automake libtool pkg-config
 sudo apt install -y ffmpeg alsa-utils python3-fastapi python3-pip
 sudo apt install sox libsox-fmt-all -y
+
 git clone https://github.com/Hamlib/Hamlib.git
 cd Hamlib
 ./bootstrap
@@ -38,10 +39,6 @@ pip install fastapi uvicorn
 pip3 install uvicorn
 sudo apt install -y uvicorn
 
-
-
-
----------
 
 cat << EOF > /home/pi/fastapi/api.py
 from fastapi import FastAPI
