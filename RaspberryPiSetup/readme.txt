@@ -19,16 +19,30 @@ Dos窓やPowerShellに、
 
 ssh pi@raspizero
 
-とうち、RaspberryPiZero2Wにログインします。
+と入力し、RaspberryPiZero2Wにログインします。
 
 ④各種インストール
 以下コマンドを実施してください。
+なお、結構時間がかかります。
 
 sudo apt -y update
 sudo apt -y install bash
+wget https://raw.githubusercontent.com/ji1ore/M5CoreHamCAT/main/RaspberryPiSetup/setup_netwk.sh
+chmod +x setup_netwk.sh
+
+※ここでネットワークが切れますので再度SSHログインしてください。
+
+ipconfig /all
+
+※IPv4アドレスが取得できてることを確認してください。
+
 wget https://raw.githubusercontent.com/ji1ore/M5CoreHamCAT/main/RaspberryPiSetup/setup_fastapi_radio.sh
 chmod +x setup_fastapi_radio.sh
-./setup_fastapi_radio.sh
+bash setup_fastapi_radio.sh
 
 sudo systemctl status fastapi
+rm setup_fastapi_radio.sh
+
+⑤確認
+インストールが完了すると以下のようなメッセージが出るはずです。
 
