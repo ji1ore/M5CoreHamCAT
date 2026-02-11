@@ -1,0 +1,287 @@
+/****************************************************
+ * デバイス選択画面
+ ****************************************************/
+#include <M5Unified.h>
+#include "ui_core.h"
+#include "ui_display.h"
+#include "globals.h"
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+void drawRigConnectScreen();
+
+
+void handleRigConnectScreen()
+{
+
+    auto t = M5.Touch.getDetail();
+    static bool loaded = false;
+    static bool firstDraw = true; //
+
+    if (appState == STATE_CONNECT_FAILED)
+    {
+        canvas.fillScreen(BLACK);
+        canvas.setTextColor(RED);
+        canvas.setFont(&fonts::efontJA_16);
+        canvas.drawString("Connect Failed", 80, 100);
+        canvas.setTextColor(WHITE);
+        canvas.fillRoundRect(100, 150, 120, 30, 6, BLUE);
+        canvas.setTextColor(WHITE);
+        canvas.setTextDatum(middle_center);
+        canvas.drawString("OK", 160, 165);
+        canvas.setTextDatum(top_left);
+        canvas.pushSprite(0, 0);
+
+        if (t.wasPressed() && t.x >= 100 && t.x <= 220 && t.y >= 150 && t.y <= 180)
+        {
+            appState = STATE_DEVICE_SELECT;
+            firstDraw = true;
+        }
+        return;
+    }
+
+    if (appState != STATE_DEVICE_SELECT)
+        return;
+    firstDraw = true;
+
+    if (!loaded)
+    {
+        bool rigsOK = false;
+
+        // --- /rigs ---
+        {
+            HTTPClient http;
+            String url = "http://" + raspiHost + ":" + String(apiPort) + "/rigs";
+            http.begin(url);
+            int code = http.GET();
+            Serial.printf("[/rigs] HTTP code = %d\n", code);
+
+            if (code == 200)
+            {
+                String body = http.getString();
+                JsonDocument doc;
+                if (!deserializeJson(doc, body))
+                {
+                    for (JsonObject r : doc["rigs"].as<JsonArray>())
+                    {
+                        rigIds.push_back(r["id"].as<int>());
+                        rigNames.push_back(r["name"].as<String>());
+                    }
+                    rigsOK = true;
+                }
+            }
+            http.end();
+        }
+
+        // --- /devices（空でもOK） ---
+        {
+            HTTPClient http;
+            String url = "http://" + raspiHost + ":" + String(apiPort) + "/devices";
+            http.begin(url);
+            int code = http.GET();
+            Serial.printf("[/devices] HTTP code = %d\n", code);
+
+            if (code == 200)
+            {
+                String body = http.getString();
+                JsonDocument doc;
+                if (!deserializeJson(doc, body))
+                {
+                    // CATデバイス
+                    JsonArray serial = doc["serial"].as<JsonArray>();
+                    for (JsonVariant d : serial)
+                    {
+                        catList.push_back(d.as<String>());
+                    }
+                }
+            }
+            http.end();
+        }
+
+        if (rigsOK)
+        {
+            if (catList.empty())
+                catList.push_back("None");
+
+            loaded = true; // ← これが必要！
+            return;
+        }
+    }
+
+    if (!loaded)
+    {
+        canvas.fillScreen(BLACK);
+        canvas.setTextColor(WHITE);
+        canvas.drawString("Loading...", 100, 120);
+        canvas.pushSprite(0, 0);
+        return;
+    }
+
+    // --- 初回ロード ---
+    if (firstDraw)
+    {
+        prefs.begin("device", true);
+        selRig = prefs.getInt("rig", selRig);
+        selCat = prefs.getInt("cat", selCat);
+        prefs.end();
+
+        drawRigConnectScreen();
+        firstDraw = false;
+    }
+
+    // --- タッチ処理 ---
+    if (!t.wasPressed())
+        return;
+
+    int x = t.x, y = t.y;
+    // Rig model
+    if (x >= 10 && x <= 310 && y >= 30 && y <= 58)
+    {
+        appState = STATE_RIG_CONNECT;
+        firstDraw = true;
+        return;
+    }
+
+    // CAT
+    if (x >= 10 && x <= 310 && y >= 90 && y <= 118)
+    {
+        selCat = (selCat + 1) % catList.size();
+        drawRigConnectScreen();
+        return;
+    }
+
+    // Baud Rate
+    if (x >= 10 && x <= 310 && y >= 150 && y <= 178)
+    {
+        selBaud = (selBaud + 1) % baudRates.size();
+        drawRigConnectScreen();
+        return;
+    }
+
+    // Back ボタン
+    if (x >= 10 && x <= 110 && y >= 200 && y <= 235)
+    {
+        appState = STATE_WIFI; // または戻りたい画面
+        firstDraw = true;
+        return;
+    }
+
+    // Connect ボタン
+    if (x >= 130 && x <= 310 && y >= 200 && y <= 235)
+    {
+
+        canvas.fillRect(60, 80, 200, 80, BLACK); // 背景クリア
+        canvas.drawRect(60, 80, 200, 80, BLUE);  // 青い枠
+        canvas.setTextDatum(middle_center);
+        canvas.setTextColor(WHITE);
+        canvas.setFont(&fonts::efontJA_16);
+        canvas.drawString("Connecting", 160, 120); // 中央に表示
+        canvas.setTextDatum(top_left);
+        canvas.pushSprite(0, 0);
+
+        prefs.begin("device", false);
+        prefs.putInt("rig", selRig);
+        prefs.putInt("cat", selCat);
+        prefs.putInt("baud", selBaud);
+        prefs.end();
+
+        String url = "http://" + raspiHost + ":" + String(apiPort) +
+                     "/radio/open?model=" + rigIds[selRig] +
+                     "&cat=" + catList[selCat] +
+                     "&baud=" + String(baudRates[selBaud]);
+
+        HTTPClient http;
+        http.begin(url);
+        http.GET();
+        http.end();
+
+        // --- ステータス取得待ち ---
+        bool ready = false;
+        for (int i = 0; i < 30; ++i) // 最大3秒待つ（100ms × 30回）
+        {
+            delay(100);
+            HTTPClient statusHttp;
+            String statusUrl = "http://" + raspiHost + ":" + String(apiPort) + "/radio/status";
+            statusHttp.begin(statusUrl);
+            int statusCode = statusHttp.GET();
+            if (statusCode == 200)
+            {
+                String body = statusHttp.getString();
+                JsonDocument doc;
+                if (!deserializeJson(doc, body))
+                {
+                    if (doc["freq"].is<String>()) // 必要なキーがあるか確認
+                    {
+                        ready = true;
+                        break;
+                    }
+                }
+            }
+            statusHttp.end();
+        }
+
+        if (ready)
+        {
+            appState = STATE_MAIN_UI;
+            firstDraw = true;
+        }
+        else
+        {
+            appState = STATE_CONNECT_FAILED;
+            firstDraw = true;
+            return;
+        }
+
+        return;
+    }
+}
+
+void drawRigConnectScreen()
+{
+    canvas.fillScreen(BLACK);
+
+    // ---- Rig model ----
+    canvas.setFont(&fonts::efontJA_12);
+    canvas.setTextColor(WHITE);
+    canvas.drawString("Rig model", 10, 5);
+
+    canvas.drawRect(10, 30, 300, 30, WHITE);
+    canvas.setFont(&fonts::efontJA_16);
+    canvas.setTextDatum(middle_left);
+    canvas.drawString(rigNames[selRig], 20, 45);
+
+    // ---- CAT Device ----
+    canvas.setFont(&fonts::efontJA_12);
+    canvas.drawString("CAT Device", 10, 75);
+
+    canvas.drawRect(10, 90, 300, 30, WHITE);
+    canvas.setFont(&fonts::efontJA_16);
+    canvas.setTextDatum(middle_left);
+    canvas.drawString(catList[selCat], 20, 105);
+
+    // ---- Baud Rate ----
+    canvas.setFont(&fonts::efontJA_12);
+    canvas.drawString("Baud Rate", 10, 135);
+
+    canvas.drawRect(10, 150, 300, 30, WHITE);
+    canvas.setFont(&fonts::efontJA_16);
+    canvas.setTextDatum(middle_left);
+    canvas.drawString(String(baudRates[selBaud]) + " bps", 20, 165);
+
+    int btnY = 200;
+    int btnH = 35;
+
+    // Back ボタン
+    canvas.fillRoundRect(10, btnY, 100, btnH, 6, RED);
+    canvas.setTextDatum(middle_center);
+    canvas.setTextColor(WHITE);
+    canvas.drawString("Back", 10 + 50, btnY + btnH / 2);
+
+    // Connect ボタン
+    canvas.fillRoundRect(130, btnY, 180, btnH, 6, BLUE);
+    canvas.setTextColor(WHITE);
+    canvas.drawString("Connect", 130 + 90, btnY + btnH / 2);
+
+    canvas.setTextDatum(top_left);
+    canvas.pushSprite(0, 0);
+}
