@@ -1,5 +1,7 @@
 /****************************************************
- * メイン UI 画面
+ *  M5CoreHamCAT 無線機制御UI画面
+ *  Ver0.01
+ *  by JI1ORE
  ****************************************************/
 #include <M5Unified.h>
 #include "ui_core.h"
@@ -35,7 +37,7 @@ RigStatus fetchRigStatus();
 void handleSwipe(int dir);
 void changeFreq(int dir);
 void newFreq(int64_t newFreqHz);
-void fetchModeList();
+bool fetchModeList();
 void startFreqInputUI();
 void drawFreqInputScreen();
 void handleFreqInputScreen();
@@ -52,7 +54,7 @@ void drawMainUI(const String &freq, const String &mode, const String &model, int
   canvas.setTextDatum(top_left);
   canvas.setFont(&fonts::efontJA_12);
   canvas.setCursor(10, 10);
-  canvas.printf("%s", model.c_str()); 
+  canvas.printf("%s", model.c_str());
 
   // --- 送信時表示 ---
   canvas.setFont(&fonts::efontJA_12);
@@ -62,11 +64,11 @@ void drawMainUI(const String &freq, const String &mode, const String &model, int
 
   // --- 周波数（やや小さめ） ---
   double freqHz = freq.toDouble();
-  double freqMHz = freqHz / 1e6;   
+  double freqMHz = freqHz / 1e6;
   canvas.setFont(&fonts::efontJA_24);
   canvas.setTextColor(WHITE);
   canvas.setCursor(10, 35);
-  canvas.printf("%.5f", freqMHz); 
+  canvas.printf("%.5f", freqMHz);
 
   // --- 信号強度バー受信 ---
   int barX = 215, barY = 10;
@@ -214,13 +216,23 @@ void handleMainUIScreen()
   if (appState != STATE_MAIN_UI)
     return;
   static bool firstDraw = true;
-  if (firstDraw)
+  if (mainFirstDraw)
   {
+    if (!fetchModeList())
+    {
+      // モード取得失敗時の処理（エラーメッセージ表示など）
+      canvas.fillScreen(BLACK);
+      canvas.setCursor(10, 10);
+      canvas.setTextColor(RED);
+      canvas.setFont(&fonts::efontJA_16);
+      canvas.print("モード情報を取得できません");
+      canvas.pushSprite(0, 0);
+      return;
+    }
 
-    fetchModeList();
     fetchRigStatus();
     drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
-    firstDraw = false;
+    mainFirstDraw = false;
   }
 
   // --- ロータリーエンコーダー ---
@@ -565,19 +577,17 @@ void startFreqInputUI()
   canvas.pushSprite(0, 0);
 }
 
-void fetchModeList()
+bool fetchModeList()
 {
   supportedModes.clear();
-
   HTTPClient http;
   String url = "http://" + raspiHost + ":" + String(apiPort) + "/radio/caps";
   http.begin(url);
   int code = http.GET();
-
   if (code != 200)
   {
     http.end();
-    return;
+    return false;
   }
 
   String body = http.getString();
@@ -585,7 +595,7 @@ void fetchModeList()
 
   JsonDocument doc;
   if (deserializeJson(doc, body) != DeserializationError::Ok)
-    return;
+    return false;
 
   if (doc["modes"].is<JsonArray>())
   {
@@ -597,6 +607,8 @@ void fetchModeList()
   }
 
   loadModeStepPrefs();
+
+  return !supportedModes.empty(); // ← モードが1つもなければ false
 }
 
 void handleFreqInputScreen()
@@ -619,11 +631,20 @@ void handleFreqInputScreen()
   // OK
   if (x >= 240 && x <= 320 && y >= 210 && y <= 240)
   {
+    if (freqInputBuffer.length() == 0)
+    { // 入力が空なら何もせず戻る
+      appState = STATE_MAIN_UI;
+      mainFirstDraw = true;
+      drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+      return;
+    }
+    
     double freqMHz = freqInputBuffer.toFloat();
     int64_t newFreqHz = (int64_t)(freqMHz * 1e6);
 
     newFreq(newFreqHz);
     appState = STATE_MAIN_UI;
+    mainFirstDraw = true;
 
     drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
     return;

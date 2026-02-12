@@ -1,5 +1,7 @@
 /****************************************************
- * デバイス選択画面
+ *  M5CoreHamCAT 無線機接続画面
+ *  Ver0.01
+ *  by JI1ORE
  ****************************************************/
 #include <M5Unified.h>
 #include "ui_core.h"
@@ -10,13 +12,11 @@
 
 void drawRigConnectScreen();
 
-
 void handleRigConnectScreen()
 {
 
     auto t = M5.Touch.getDetail();
     static bool loaded = false;
-    static bool firstDraw = true; //
 
     if (appState == STATE_CONNECT_FAILED)
     {
@@ -35,14 +35,13 @@ void handleRigConnectScreen()
         if (t.wasPressed() && t.x >= 100 && t.x <= 220 && t.y >= 150 && t.y <= 180)
         {
             appState = STATE_DEVICE_SELECT;
-            firstDraw = true;
+            rigConnectFirstDraw = true;
         }
         return;
     }
 
     if (appState != STATE_DEVICE_SELECT)
         return;
-    firstDraw = true;
 
     if (!loaded)
     {
@@ -56,11 +55,19 @@ void handleRigConnectScreen()
             int code = http.GET();
             Serial.printf("[/rigs] HTTP code = %d\n", code);
 
-            if (code == 200)
+            if (code != 200)
+            {
+                lastErrorMessage = "Open Failed (" + String(code) + ")";
+                appState = STATE_CONNECT_FAILED;
+                rigConnectFirstDraw = true;
+
+                return;
+            }
+            else if (code == 200)
             {
                 String body = http.getString();
                 JsonDocument doc;
-                if (!deserializeJson(doc, body))
+                if (deserializeJson(doc, body) == DeserializationError::Ok)
                 {
                     for (JsonObject r : doc["rigs"].as<JsonArray>())
                     {
@@ -118,15 +125,19 @@ void handleRigConnectScreen()
     }
 
     // --- 初回ロード ---
-    if (firstDraw)
+    if (rigConnectFirstDraw)
     {
         prefs.begin("device", true);
         selRig = prefs.getInt("rig", selRig);
         selCat = prefs.getInt("cat", selCat);
         prefs.end();
 
+        // ★ 範囲外なら0に戻す
+        if (selCat >= catList.size())
+            selCat = 0;
+
         drawRigConnectScreen();
-        firstDraw = false;
+        rigConnectFirstDraw = false;
     }
 
     // --- タッチ処理 ---
@@ -138,7 +149,7 @@ void handleRigConnectScreen()
     if (x >= 10 && x <= 310 && y >= 30 && y <= 58)
     {
         appState = STATE_RIG_CONNECT;
-        firstDraw = true;
+        rigConnectFirstDraw = true;
         return;
     }
 
@@ -162,13 +173,21 @@ void handleRigConnectScreen()
     if (x >= 10 && x <= 110 && y >= 200 && y <= 235)
     {
         appState = STATE_WIFI; // または戻りたい画面
-        firstDraw = true;
+        rigConnectFirstDraw = true;
         return;
     }
 
     // Connect ボタン
     if (x >= 130 && x <= 310 && y >= 200 && y <= 235)
     {
+
+        if (rigNames.empty() || rigIds.empty())
+        {
+            appState = STATE_CONNECT_FAILED;
+            lastErrorMessage = "Device Not Found";
+            rigConnectFirstDraw = true;
+            return;
+        }
 
         canvas.fillRect(60, 80, 200, 80, BLACK); // 背景クリア
         canvas.drawRect(60, 80, 200, 80, BLUE);  // 青い枠
@@ -223,12 +242,13 @@ void handleRigConnectScreen()
         if (ready)
         {
             appState = STATE_MAIN_UI;
-            firstDraw = true;
+            rigConnectFirstDraw = true;
         }
         else
         {
+            lastErrorMessage = "Connect Time Out";
             appState = STATE_CONNECT_FAILED;
-            firstDraw = true;
+            rigConnectFirstDraw = true;
             return;
         }
 

@@ -1,3 +1,8 @@
+/****************************************************
+ *  M5CoreHamCAT main.cpp
+ *  Ver0.01
+ *  by JI1ORE
+ ****************************************************/
 #include <M5Unified.h>
 #include <M5GFX.h>
 #include "ui_display.h"

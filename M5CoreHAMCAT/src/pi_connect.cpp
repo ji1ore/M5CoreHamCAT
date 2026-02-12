@@ -1,3 +1,8 @@
+/****************************************************
+ *  M5CoreHamCAT ラズパイ接続画面
+ *  Ver0.01
+ *  by JI1ORE
+ ****************************************************/
 #include <M5Unified.h>
 #include "ui_core.h"
 #include "ui_display.h"

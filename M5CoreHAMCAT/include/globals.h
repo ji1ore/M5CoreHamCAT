@@ -6,15 +6,19 @@
 #include <WiFi.h>
 #include <Unit_Encoder.h>
 
+// ==== UI共通 ====
+extern M5Canvas canvas;
+extern Preferences prefs;
+extern bool mainFirstDraw;
+extern bool showErrorDialog;
+extern String lastErrorMessage;
+
+// ==== エンコーダ ====
 extern Unit_Encoder encoder;
 extern int32_t lastEncVal;
 
-
-extern M5Canvas canvas;
-
-// ---- AppState ----
-enum AppState
-{
+// ==== アプリ状態 ====
+enum AppState {
   STATE_WIFI,
   STATE_PASSWORD,
   STATE_PI_CONNECT,
@@ -22,11 +26,12 @@ enum AppState
   STATE_RIG_CONNECT,
   STATE_MAIN_UI,
   STATE_FREQ_INPUT,
-  STATE_CONNECT_FAILED 
+  STATE_CONNECT_FAILED
 };
+extern AppState appState;
 
-enum MenuItem
-{
+// ==== メニュー項目 ====
+enum MenuItem {
   MENU_UP,
   MENU_DOWN,
   MENU_BACK,
@@ -38,30 +43,24 @@ enum MenuItem
   MENU_WIDTH,
   MENU_NONE
 };
+extern int selectedItem;
 
-extern AppState appState;
-
-// ---- Wi-Fi ----
-struct WifiEntry
-{
+// ==== Wi-Fi 関連 ====
+struct WifiEntry {
   String ssid;
   int rssi;
 };
 extern std::vector<WifiEntry> wifiList;
-
 extern bool wifiScanned;
-extern bool showErrorDialog;
 extern int selectedWifiIndex;
 extern int wifiScrollOffset;
-extern std::vector<int> baudRates; extern int selBaud;
 
-// ---- Password / Keyboard ----
+// ==== パスワード入力・キーボード ====
 extern bool passwordForWifi;
 extern String inputPassword;
 extern bool shiftOn;
 
-enum EditField
-{
+enum EditField {
   FIELD_NONE,
   FIELD_HOST,
   FIELD_API_PORT,
@@ -69,69 +68,54 @@ enum EditField
 };
 extern EditField editingField;
 
-enum KeyboardMode
-{
+enum KeyboardMode {
   KB_QWERTY,
   KB_NUMPAD
 };
 extern KeyboardMode kbMode;
 
-struct StepSetting
-{
+// ==== 周波数ステップ設定 ====
+struct StepSetting {
   const char *label;
   long stepHz;
 };
-
 extern StepSetting stepList[];
 extern int selStep;
 
-// ---- RasPi Config ----
+// ==== Raspberry Pi 接続設定 ====
 extern bool useMDNS;
 extern String raspiHost;
 extern int apiPort;
 extern int baudRate;
+extern bool useInternalSpeaker;
 
-extern String lastErrorMessage;
-
-// ---- RigSelect ----
-extern bool rigSelectFirstDraw;
-
-// ---- DeviceSelect ----
+// ==== Rig / デバイス選択 ====
 extern std::vector<int> rigIds;
 extern std::vector<String> rigNames;
+extern std::vector<String> catList;
 extern std::vector<String> devList;
 extern int selRig;
+extern int selCat;
+extern int selBaud;
+extern std::vector<int> baudRates;
+extern bool rigSelectFirstDraw;
+extern bool rigConnectFirstDraw;
 
-// ---- Main UI ----
+// ==== 無線機状態 ====
+extern int64_t lastFreqHz;
+extern String lastMode;
+extern String lastModel;
+extern int lastWidth;
+extern int selWidthIndex;
+extern std::vector<int> supportedWidths;
+
 extern int txPowerWatt;
 extern int txVolPercent;
 extern int rxVolPercent;
+extern int rxVolume;
 extern bool bkinOn;
 extern bool isTransmitting;
 extern int signalStrength;
 
-extern int selectedItem;
-
-// ---- Preferences ----
-extern Preferences prefs;
-
-// ---- Functions ----
+// ==== 関数 ====
 String connectToRasPiServices();
-
-// extern LGFX_Sprite listCanvas;
-
-extern int selCat;
-
-extern int64_t lastFreqHz;
-extern String lastMode;
-extern String lastModel;
-
-
-extern int rxVolume;
-
-extern std::vector<String> catList;
-extern int lastWidth;
-extern int selWidthIndex;
-extern std::vector<int> supportedWidths;
-extern bool useInternalSpeaker;
-extern bool isTransmitting; 

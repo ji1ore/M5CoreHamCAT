@@ -1,3 +1,8 @@
+/****************************************************
+ *  M5CoreHamCAT 起動画面
+ *  Ver0.01
+ *  by JI1ORE
+ ****************************************************/
 #include <Arduino.h>
 #include "globals.h"
 #include <M5Unified.h>
