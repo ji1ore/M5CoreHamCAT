@@ -34,15 +34,17 @@ pip3 install uvicorn
 sudo apt install -y uvicorn
 
 
-cat << EOF > /home/pi/fastapi/api.py
+cat << 'EOF' > /home/pi/fastapi/api.py
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
+from fastapi import BackgroundTasks
 import glob
 import os
 import subprocess
 import socket
 import signal
+import select
 
 app = FastAPI()
 
