@@ -343,56 +343,77 @@ def set_power(value: float):
 
 
 @app.get("/radio/audio")
-def audio_stream(audio: str = "plughw:CARD=CODEC,DEV=0"):
+def audio_stream(background_tasks: BackgroundTasks):
+
+    subprocess.run(["pkill", "-f", "ffmpeg"])
     cmd = [
         "ffmpeg",
         "-f", "alsa",
-        "-ac", "2",
-        "-ar", "44100",
-        "-i", audio,
-        "-af", "pan=mono|c0=0.5*c0+0.5*c1",
+        "-thread_queue_size", "512",
+        "-ar", "32000",
+        "-sample_fmt", "s16",
+        "-i", "plughw:CARD=CODEC,DEV=0",
+        "-ac", "1",
+        "-af", "highpass=f=300,lowpass=f=4000",
+        "-filter:a", "volume=5.0" ,
         "-f", "s16le",
-        "-map", "0:a",
-        "-vn",
-        "-sn",
-        "-dn",
+        "-acodec", "pcm_s16le",
         "-nostdin",
+        "-vn", "-sn", "-dn",
+        "-map", "0:a",
+        "-flush_packets", "1",
+        "-nostats", "-loglevel", "quiet",
         "pipe:1"
     ]
+
 
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        preexec_fn=os.setsid
+        start_new_session=True
     )
 
     def cleanup():
         try:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        except:
-            pass
-        process.wait()
+            if process.poll() is None:
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                print(f"★ SIGTERM 送信 → PGID {os.getpgid(process.pid)}")
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    print("★ SIGTERMで終了せず → SIGKILL")
+                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            else:
+                print("★ cleanup: ffmpeg はすでに終了していました")
+        except Exception as e:
+            print("★ cleanup error:", e)
+        finally:
+            try:
+                if process.stdout:
+                    process.stdout.close()
+            except Exception as e:
+                print("★ stdout close error:", e)
+
 
     def stream():
         try:
             while True:
-                data = process.stdout.read(1024)
-                if not data:
-                    break
-                yield data
+                rlist, _, _ = select.select([process.stdout], [], [], 0.01)
+                if process.stdout in rlist:
+                    data = process.stdout.read(4096)
+                    if not data:
+                        break
+                    yield data
         except GeneratorExit:
-            pass  # クライアント切断時
-        finally:
+            print("★ クライアント切断") 
             cleanup()
 
-    return StreamingResponse(stream(), media_type="audio/raw", background=BackgroundTask(cleanup))
+    return StreamingResponse(stream(), media_type="application/octet-stream", background=BackgroundTask(cleanup))
 
 EOF
 
-
-
-cat << EOF | sudo tee /etc/systemd/system/fastapi.service
+cat << 'EOF' | sudo tee /etc/systemd/system/fastapi.service
 [Unit]
 Description=FastAPI Service
 After=network.target
@@ -408,6 +429,41 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
+
+cat << 'EOF' | sudo tee /etc/systemd/system/fastapi-audio.service
+
+[Unit]
+Description=FastAPI Audio Service
+After=network.target sound.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/fastapi
+ExecStart=/usr/bin/uvicorn api:app --host 0.0.0.0 --port 50000
+Restart=always
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+
+
+
 sudo systemctl daemon-reload
 sudo systemctl enable fastapi
 sudo systemctl start fastapi
+
+sudo systemctl status fastapi
+
+
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable fastapi-audio
+sudo systemctl start fastapi-audio
+
+sudo systemctl status fastapi-audio
+
+
+
