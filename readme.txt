@@ -59,8 +59,12 @@ https://github.com/ji1ore/M5CoreHamCAT/main/M5CoreHamCAT
 ・コンピュータにM5CoreS3SEをUSBケーブルで接続し、Burnします。
 MBurner上では、M5CoreHamCATで検索できます。
 
-⑤注意点
-まだ結構不安定です。
+⑤セットアップ手順(AtomS3Lite)
+AtomS3LiteもM5Burnを使ってファームウェアを読み込んでください。
+MBurner上では、M5CoreHamCATで検索すると、M5CoreHamCAT_Speakerが出てきます。
+
+⑥注意点
+まだ結構不安定です。上手く動かないこともあると思いますので、何度か再起動するなど試してみてください。
 無線機の情報が取れなくなったら、Raspberry Pi Zero2WにSSH接続をしてリブートを行ってください。
 リブートのコマンドは以下になります。
 
