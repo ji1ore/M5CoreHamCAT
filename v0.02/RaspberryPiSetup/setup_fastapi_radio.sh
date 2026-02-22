@@ -357,7 +357,7 @@ def audio_stream(background_tasks: BackgroundTasks):
         "-i", "plughw:CARD=CODEC,DEV=0",
         "-ac", "1",
         "-af", "highpass=f=300,lowpass=f=4000",
-        "-filter:a", "volume=5.0" ,
+        "-filter:a", "volume=10.0" ,
         "-f", "s16le",
         "-acodec", "pcm_s16le",
         "-nostdin",
