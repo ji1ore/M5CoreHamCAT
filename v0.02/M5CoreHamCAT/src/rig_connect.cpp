@@ -110,7 +110,28 @@ void handleRigConnectScreen()
             if (catList.empty())
                 catList.push_back("None");
 
-            loaded = true; // ← これが必要！
+            // ★ rigIds[] が埋まった後に rigId を読み込む！
+            prefs.begin("device", true);
+            int savedRigId = prefs.getInt("rigId", -1);
+            selCat = prefs.getInt("cat", 0);
+            prefs.end();
+
+            // rigIds から一致するインデックスを探す
+            selRig = 0;
+            for (int i = 0; i < rigIds.size(); ++i)
+            {
+                if (rigIds[i] == savedRigId)
+                {
+                    selRig = i;
+                    break;
+                }
+            }
+
+            if (selCat >= catList.size())
+                selCat = 0;
+
+            loaded = true;
+            rigConnectFirstDraw = true;
             return;
         }
     }
@@ -126,7 +147,7 @@ void handleRigConnectScreen()
 
     // --- 初回ロード ---
     if (rigConnectFirstDraw)
-    {
+    { /*
         prefs.begin("device", true);
         selRig = prefs.getInt("rig", selRig);
         selCat = prefs.getInt("cat", selCat);
@@ -135,7 +156,7 @@ void handleRigConnectScreen()
         // ★ 範囲外なら0に戻す
         if (selCat >= catList.size())
             selCat = 0;
-
+     */
         drawRigConnectScreen();
         rigConnectFirstDraw = false;
     }

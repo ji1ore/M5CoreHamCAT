@@ -255,5 +255,20 @@ String connectToRasPiServices()
         rigNames.push_back(r["name"].as<String>());
     }
 
+    // ★ rigId を読み込んで selRig を復元！
+    prefs.begin("device", true);
+    int savedRigId = prefs.getInt("rigId", -1);
+    prefs.end();
+
+    selRig = 0;
+    for (int i = 0; i < rigIds.size(); ++i)
+    {
+        if (rigIds[i] == savedRigId)
+        {
+            selRig = i;
+            break;
+        }
+    }
+
     return "";
 }

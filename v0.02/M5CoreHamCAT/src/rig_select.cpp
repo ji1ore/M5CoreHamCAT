@@ -98,9 +98,19 @@ void handleRigSelectScreen()
 
     if (rigSelectFirstDraw)
     {
+        prefs.begin("device", true);
+        int savedRigId = prefs.getInt("rigId", -1);
+        prefs.end();
 
-        prefs.begin("rig", true);
-        selRig = prefs.getInt("lastRig", 0);
+        selRig = 0;
+        for (int i = 0; i < rigIds.size(); ++i)
+        {
+            if (rigIds[i] == savedRigId)
+            {
+                selRig = i;
+                break;
+            }
+        }
 
         drawRigSelectScreen();
         rigSelectFirstDraw = false;
@@ -121,12 +131,12 @@ void handleRigSelectScreen()
             return;
         }
 
-        // OK
+        // OK ボタン
         if (t.x >= 200 && t.x <= 310 &&
             t.y >= RIG_BTN_Y && t.y <= RIG_BTN_Y + RIG_BTN_H)
         {
-            prefs.begin("rig", false);
-            prefs.putInt("lastRig", selRig);
+            prefs.begin("device", false);
+            prefs.putInt("rigId", rigIds[selRig]); // ← rigId を保存！
             prefs.end();
 
             appState = STATE_DEVICE_SELECT;
