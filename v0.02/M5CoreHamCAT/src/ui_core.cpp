@@ -6,7 +6,6 @@
 #include "ui_core.h"
 #include "globals.h"
 
-//M5Canvas canvas(&M5.Display);
 
 void ui_init() {
     canvas.createSprite(320, 240);

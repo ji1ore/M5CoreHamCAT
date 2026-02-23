@@ -6,6 +6,7 @@
 #include <M5Unified.h>
 #include <M5GFX.h>
 #include "ui_display.h"
+#include "ui_core.h"
 #include "globals.h"
 #include "driver/i2s.h"
 #include <HTTPClient.h>
@@ -21,6 +22,8 @@ const int port = 50000;
 const char *url = "http://";
 unsigned long lastSend = 0;
 
+
+
 // M5Canvas canvas(&M5.Display);
 MenuItem detectTouchedButton(int x, int y);
 
@@ -32,6 +35,7 @@ void handlePiConnectScreen();
 void handleRigSelectScreen();
 void handleFreqInputScreen();
 void drawSplashScreen();
+void statusTask(void *param);
 
 void setup()
 {
@@ -57,6 +61,7 @@ void setup()
   canvas.setTextColor(WHITE);
   canvas.setFont(&fonts::efontJA_16);
 
+  xTaskCreatePinnedToCore(statusTask, "StatusTask", 4096, NULL, 1, NULL, 0);
   appState = STATE_WIFI;
 }
 
@@ -105,5 +110,23 @@ void loop()
   case STATE_FREQ_INPUT:
     handleFreqInputScreen();
     return;
+  }
+}
+
+void statusTask(void *param) {
+  while (true) {
+    if (appState == STATE_MAIN_UI) {
+      RigStatus st = fetchRigStatus();
+      if (st.valid) {
+        // 共有変数にコピー（mutexがあるとより安全）
+        sharedFreq = st.freq;
+        sharedMode = st.mode;
+        sharedModel = st.model;
+        sharedSignal = st.signal;
+        sharedTx = st.tx;
+        needRedraw = true;
+      }
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS); // 100msごとに取得
   }
 }

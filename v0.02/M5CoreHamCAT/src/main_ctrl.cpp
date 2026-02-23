@@ -17,17 +17,6 @@ std::map<String, int> modeStepMap;
 static int touchStartX = -1;
 static int touchStartY = -1;
 
-struct RigStatus
-{
-  String freq;
-  String mode;
-  String model;
-  int signal;
-  bool tx;
-  bool bkin;
-  bool valid; // 取得成功フラグ
-};
-
 extern String freqInputBuffer;
 std::vector<String> supportedModes;
 float currentPowerNorm = 0.0f;
@@ -242,7 +231,7 @@ void handleMainUIScreen()
     }
 
     fetchRigStatus();
-    drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+    drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
     mainFirstDraw = false;
   }
 
@@ -263,17 +252,11 @@ void handleMainUIScreen()
   static unsigned long lastPoll = 0;
   unsigned long now = millis();
 
-  if (now - lastPoll > 200)
+  if (needRedraw)
   {
-    lastPoll = now;
-
-    RigStatus st = fetchRigStatus();
-    if (st.valid)
-    {
-      isTransmitting = st.tx;
-      // drawMainUI(st.freq, st.mode, st.model, st.signal);
-      drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
-    }
+    drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
+    isTransmitting = sharedTx;
+    needRedraw = false;
   }
 
   auto t = M5.Touch.getDetail();
@@ -304,26 +287,26 @@ void handleMainUIScreen()
     else if (touched == MENU_UP)
     {
       handleSwipe(+1);
-      drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+      drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
       return;
     }
     else if (touched == MENU_DOWN)
     {
       handleSwipe(-1);
-      drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+      drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
       return;
     }
     else
     {
       if (selectedItem == touched)
-      { 
+      {
         selectedItem = MENU_NONE;
       }
       else
-      { 
+      {
         selectedItem = touched;
       }
-      drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+      drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
     }
   }
   // --- スワイプ処理 ---
@@ -362,7 +345,7 @@ void handleMainUIScreen()
   }
 */
 
-   delay(10);
+  delay(10);
 }
 
 RigStatus fetchRigStatus()
@@ -555,7 +538,7 @@ void handleSwipe(int dir)
   default:
     break;
   }
-  drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+  drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
 }
 
 void changeFreq(int dir)
@@ -662,7 +645,7 @@ void handleFreqInputScreen()
     { // 入力が空なら何もせず戻る
       appState = STATE_MAIN_UI;
       mainFirstDraw = true;
-      drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+      drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
       return;
     }
 
@@ -673,7 +656,7 @@ void handleFreqInputScreen()
     appState = STATE_MAIN_UI;
     mainFirstDraw = true;
 
-    drawMainUI(String(lastFreqHz), lastMode, lastModel, signalStrength);
+    drawMainUI(sharedFreq, sharedMode, sharedModel, sharedSignal);
     return;
   }
 

@@ -90,3 +90,11 @@ int signalStrength = 0;
 
 // ==== タスク ====
 TaskHandle_t audioTaskHandle = nullptr;
+
+// 共有用の変数（描画や他処理で使う）
+String sharedFreq;
+String sharedMode;
+String sharedModel;
+int sharedSignal = 0;
+bool sharedTx = false;
+bool needRedraw = true;
