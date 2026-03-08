@@ -56,7 +56,6 @@ rig = None
 current_model = None 
 current_cat = None 
 current_baud = None
-poll_enabled = True
 skip_poll_until = 0
 
 radio_cache = {
@@ -95,21 +94,7 @@ def rigctl_cmd(cmd: str):
             s.close()
 
 def poll_rig():
-    global skip_poll_until
-
     while True:
-        now = time.time()
-
-        # ★ 周波数取得禁止期間ならスキップ（0.5秒）
-        if now < skip_poll_until:
-            time.sleep(0.05)   # ← ここは短くてOK（ループを軽く回すだけ）
-            continue
-
-        # ★ poll_enabled=False のときは 0.5秒だけ停止して抜ける
-        if not poll_enabled:
-            time.sleep(0.5)
-            continue
-
         # --- freq ---
         freq_raw = rigctl_cmd("f")
         try:
@@ -117,19 +102,17 @@ def poll_rig():
             if freq_val > 0:
                 radio_cache["freq"] = freq_val
         except:
-            pass  # 無効値は更新しない
+            pass
 
         # --- mode / width ---
         mode_raw = rigctl_cmd("m")
         parts = mode_raw.split()
 
-        # mode
         if len(parts) >= 1:
             m = parts[0]
             if m not in ["ERROR:", "?", ""]:
                 radio_cache["mode"] = m
 
-        # width
         if len(parts) >= 2:
             try:
                 w = int(parts[1])
@@ -165,7 +148,8 @@ def poll_rig():
         except:
             pass
 
-        time.sleep(0.5)  
+        # ★ ポーリング間隔は 0.2〜0.3秒が最適
+        time.sleep(0.25)
 
 
 def poll_signal():
@@ -180,7 +164,7 @@ def poll_signal():
         except:
             radio_cache["signal"] = 0.0
 
-        time.sleep(0.20)   
+        time.sleep(0.25)   
 
 supported_modes = []
 
@@ -298,15 +282,9 @@ def open_radio(model: int, cat: str, baud: int = 38400, audio: str = ""):
 
 @app.get("/radio/setlevel")
 def set_level(name: str, value: float):
-    global poll_enabled,skip_poll_until
-    poll_enabled = False
-    try:
-        rigctl_cmd(f"L {name.upper()} {value}")
-        radio_cache[name.lower()] = value 
-        skip_poll_until = time.time() + 1.0 
-        return {"status": "ok", "level": name, "value": value}
-    finally:
-        poll_enabled = True
+    radio_cache[name.lower()] = value
+    rigctl_cmd(f"L {name.upper()} {value}")
+    return {"status": "ok", "level": name, "value": value}
 
 
 @app.get("/radio/freq")
@@ -316,15 +294,9 @@ def get_freq():
 
 @app.get("/radio/setfreq")
 def set_freq(f: int):
-    global poll_enabled,skip_poll_until
-    poll_enabled = False
-    try:
-        rigctl_cmd(f"F {f}")
-        radio_cache["freq"] = f 
-        skip_poll_until = time.time() + 1.0 
-        return {"status": "ok", "freq": f}
-    finally:
-        poll_enabled = True
+    radio_cache["freq"] = f
+    rigctl_cmd(f"F {f}")
+    return {"status": "ok", "freq": f}
 
 
 @app.get("/radio/mode")
@@ -334,50 +306,25 @@ def get_mode():
 
 @app.get("/radio/setmode")
 def set_mode(mode: str, width: int = 2400):
-    global poll_enabled,skip_poll_until
-    poll_enabled = False
-    try:
-        rigctl_cmd(f"M {mode} {width}")
-        radio_cache["mode"] = mode    
-        radio_cache["width"] = width  
-        skip_poll_until = time.time() + 1.0 
-        return {"status": "ok", "mode": mode, "width": width}
-    finally:
-        poll_enabled = True
-
-
+    radio_cache["mode"] = mode    
+    radio_cache["width"] = width
+    rigctl_cmd(f"M {mode} {width}")
+    return {"status": "ok", "mode": mode, "width": width}
 
 @app.get("/radio/ptt")
 def ptt(state: int):
-    global poll_enabled
-    poll_enabled = False
-    try:
-        rigctl_cmd(f"T {state}")
-        return {"status": "ok", "ptt": state}
-    finally:
-        poll_enabled = True
+    rigctl_cmd(f"T {state}")
+    return {"status": "ok", "ptt": state}
 
 @app.get("/radio/vfo")
 def set_vfo(v: str):
-    global poll_enabled
-    poll_enabled = False
-    try:
-        rigctl_cmd(f"V {v}")
-        return {"status": "ok", "vfo": v}
-    finally:
-        poll_enabled = True
-
+    rigctl_cmd(f"V {v}")
+    return {"status": "ok", "vfo": v}
 
 @app.get("/radio/split")
 def split(state: int):
-    global poll_enabled
-    poll_enabled = False
-    try:
-        rigctl_cmd(f"S {state}")
-        return {"status": "ok", "split": state}
-    finally:
-        poll_enabled = True
-
+    rigctl_cmd(f"S {state}")
+    return {"status": "ok", "split": state}
 
 @app.get("/radio/smeter")
 def smeter():
@@ -386,16 +333,10 @@ def smeter():
 
 @app.get("/radio/step")
 def freq_step(step: int):
-    global poll_enabled
-    poll_enabled = False
-    try:
-        cur = rigctl_cmd("f")
-        cur = int(cur)
-        new = cur + step
-        rigctl_cmd(f"F {new}")
-        return {"status": "ok", "old": cur, "new": new}
-    finally:
-        poll_enabled = True
+    cur = int(rigctl_cmd("f"))
+    new = cur + step
+    rigctl_cmd(f"F {new}")
+    return {"status": "ok", "old": cur, "new": new}
 
 
 @app.get("/radio/modes")
@@ -456,6 +397,7 @@ def radio_caps():
 @app.get("/radio/setpower")
 def set_power(value: float):
     try:
+        radio_cache["power"] = value
         rigctl_cmd(f"L RFPOWER {value}")
         return {"status": "ok", "power": value}
     except Exception as e:
