@@ -18,7 +18,7 @@ M5CoreHamCAT_SpeakerはModule Audio経由で音を出すことができるよう
 ②必要なもの
 当システムを動作させるために必要なものは以下のとおりです。
 ・M5CoreS3SE/M5Core2 ver1.1 (M5CoreS3SEのほうが快適に動作します)
-・Module Audio(M5純正 SKU:M144)
+・Module Audio(M5純正 SKU:M144) PortAに刺します。
 ・Raspberry Pi Zero2W
 ・Wifiルータ(上記２つの端末が同一Wifiネットワーク上に存在することを前提とします。)
 ・Unit Encoder(M5純正 SKU:U135) 
@@ -29,7 +29,7 @@ M5CoreHamCAT_SpeakerはModule Audio経由で音を出すことができるよう
 ・その他無線機やM5CoreS3SE、Raspberry Pi Zero2Wへの電源取得やCATデータ取得に用いるUSBケーブル類
 --
 音声信号の送信二必要なもの
-・メカニカルキー(M5純正 SK6812)
+・メカニカルキー(M5純正 SK6812) PortC(M5Core2) PortB(M5CoreS3SE)に刺します。
 ・無線機に音声を飛ばせるマイク(ラジオマイク等)
 
 ③セットアップ手順(Raspberry Pi Zero2W)
