@@ -33,8 +33,8 @@ M5CoreHamCAT_SpeakerはModule Audio経由で音を出すことができるよう
 ・無線機に音声を飛ばせるマイク(ラジオマイク等)
 
 ③セットアップ手順(Raspberry Pi Zero2W)
-https://github.com/ji1ore/M5CoreHamCAT/blob/main/RaspberryPiSetup/readme.txt
-を参照してセットアップを行ってください。
+https://github.com/ji1ore/M5CoreHamCAT/blob/main/v1.11/RaspberryPiSetup/readme.txt
+を参照してセットアップを行ってください(verに応じたフォルダを参照ください)。
 主な手順は以下の通りです。
 ・Raspberry Pi Imagerのインストール
 ・Raspberry Pi Imagerの作成(ここでWifi SSIDの指定やユーザパスワードを指定します)

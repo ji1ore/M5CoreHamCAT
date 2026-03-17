@@ -51,7 +51,7 @@ A microphone capable of sending audio to the radio (e.g., wireless mic)
 
 ③ Setup Procedure (Raspberry Pi Zero 2W)
 Follow the instructions in the link below:
-https://github.com/ji1ore/M5CoreHamCAT/blob/main/RaspberryPiSetup/readme.txt (github.com in Bing)
+https://github.com/ji1ore/M5CoreHamCAT/blob/main/v1.11/RaspberryPiSetup/readme.txt (github.com in Bing)
 
 Main steps include:
 
