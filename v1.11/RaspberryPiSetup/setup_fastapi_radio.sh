@@ -96,6 +96,31 @@ def rigctl_alive():
         return False
 
 
+def rigctl_cmd_priority(cmd: str):
+    """PTT専用：ロックを待たず即実行"""
+    start = time.time()
+    print(f"[rigctl_cmd_priority] START cmd='{cmd}' t={start}")
+
+    try:
+        s = socket.socket()
+        s.settimeout(0.15)  # 優先なので短め
+        s.connect(("localhost", 4532))
+        s.sendall((cmd + "\n").encode())
+
+        try:
+            raw = s.recv(4096).decode().strip()
+        except socket.timeout:
+            raw = ""
+
+        print(f"[rigctl_cmd_priority] RAW cmd='{cmd}' -> '{raw}'")
+        return raw
+
+    finally:
+        end = time.time()
+        print(f"[rigctl_cmd_priority] END cmd='{cmd}' duration={end-start:.3f}s")
+        s.close()
+
+
 def rigctl_cmd(cmd: str):
     with rig_lock:
         start = time.time()
@@ -184,7 +209,7 @@ def poll_rig():
         except:
             pass
 
-        time.sleep(1.0)
+        time.sleep(0.5)
 
 def poll_signal():
     global last_power, last_sql, poll_enabled
@@ -239,7 +264,7 @@ def poll_signal():
                 pass
             last_sql = time.time()
 
-        time.sleep(1.0)
+        time.sleep(0.5)
 
 
 
@@ -273,7 +298,7 @@ def start_rigctld(model, cat, baud):
     ])
 
 def watchdog_heartbeat():
-    timeout = 1.0  # 1秒 heartbeat が来なければ異常
+    timeout = 3.0  # 3秒 heartbeat が来なければ異常
     while True:
         if radio_cache.get("tx", False):
             if time.time() - last_heartbeat > timeout:
@@ -439,26 +464,22 @@ last_ptt_state = 0   # 0=OFF, 1=ON
 def ptt(state: int = Form(...)):
     global last_ptt_state, last_heartbeat
 
-    # ★ OFF が来たら最優先で OFF にする
+    # OFF は常に即時反映
     if state == 0:
-        last_ptt_state = 0
-        rigctl_cmd("T 0")
+        rigctl_cmd_priority("T 0")   # ← 優先実行
         radio_cache["tx"] = False
+        last_ptt_state = 0
         return {"status": "ok", "ptt": 0}
 
-    # ★ ON が来ても、すでに OFF 状態なら無視
-    if last_ptt_state == 0:
-        # OFF → ON の遷移だけ許可
-        rigctl_cmd("T 1")
-        radio_cache["tx"] = True
-
-    # ★ heartbeat 更新
+    # ON は毎回即時実行
+    rigctl_cmd_priority("T 1")       # ← 優先実行
+    radio_cache["tx"] = True
     last_ptt_state = 1
+
+    # heartbeat 更新
     last_heartbeat = time.time()
 
     return {"status": "ok", "ptt": 1}
-
-
 
 
 @app.get("/radio/vfo")
