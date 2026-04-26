@@ -17,8 +17,6 @@ sudo make install
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/hamlib.conf
 sudo ldconfig
 
---
-
 rigctl --version
 
 
